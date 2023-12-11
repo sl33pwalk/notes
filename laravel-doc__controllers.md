@@ -233,14 +233,14 @@ Route::singleton('photos.thumbnail', ThumbnailController::class);
 
 На потом:
 
-- [] Customizing Missing Model Behavior
+- [ ] Customizing Missing Model Behavior
 
-- [] Generating Form Requests
+- [ ] Generating Form Requests
 
-- [] Partial Resource Routes
+- [ ] Partial Resource Routes
 
-- [] Naming Resource
+- [ ] Naming Resource
 
-- [] Добить Singletone
+- [ ] Добить Singletone
 
-- [] Dependency Injection
+- [ ] Dependency Injection
