@@ -558,7 +558,7 @@ public function store()
 public function __construct(Logger $logger) {}
 ```
 
-Эта подсказка говорит PHP, что все, что передается в метод, должно быть типа Logger, который может быть как интерфейсом, так и классом.
+Этот тайпхинт говорит PHP, что все, что передается в метод, должно быть типа Logger, который может быть как интерфейсом, так и классом.
 
 Controller method injection via typehinting
 
@@ -574,3 +574,101 @@ public function store(\Illuminate\Http\Request $request)
 ```
 
 тут мы вместо использования глобальных хелперов тайпхинтим сущность $request
+
+`php artisan route:list` - список всех доступных маршрутов
+
+`php artisan route:list --except-vendor`
+
+```php
+<?
+Route::get('conferences/{id}', function ($id) {
+    $conference = Conference::findOrFail($id);
+});
+
+```
+
+api resource controller:
+`php artisan make:controller MySampleResourceController --api`
+
+> у апи нет edit и create т.к. апи просто преподносит действия!
+
+#### Single Action контроллеры (контроллеры единственного действия)
+
+```php
+<?
+
+// \App\Http\Controllers\UpdateUserAvatar.php
+public function __invoke(User $user)
+{
+    // Update the user's avatar image
+}
+
+// routes/web.php
+Route::post('users/{user}/update-avatar', UpdateUserAvatar::class);
+
+```
+
+### Route Model Binding (привязка/связывание модели маршрута)
+
+- Один из самых распространенных шаблонов маршрутизации заключается в том, что первая строка любого метода контроллера пытается найти ресурс с заданным идентификатором
+
+```php
+<?
+Route::get('conferences/{id}', function ($id) {
+    $conference = Conference::findOrFail($id);
+});
+
+```
+
+- Laravel предоставляет функцию, которая упрощает этот шаблон, называемую **привязкой модели маршрута**.
+
+- Это позволяет определить, что определенное имя параметра (например, {conference}) будет указывать распознавателю маршрута, что он должен найти запись в базе данных Eloquent с этим идентификатором и затем передать ее в качестве параметра вместо того, чтобы просто передать идентификатор.
+
+Существует два вида привязки модели маршрута: неявная и пользовательская (или явная). (implicit and explicit)
+
+#### Implicit Route Model Binding (неявная привязка модели маршрута)
+
+- Назови параметр маршрута чем-то уникальным для данной модели, затем затайпхинти этот параметр в методе замыкания/контроллера и используй там то же имя переменной.
+
+```php
+<?
+Route::get('conferences/{conference}', function (Conference $conference) {
+    return view('conferences.show')->with('conference', $conference);
+});
+
+```
+
+- Поскольку параметр маршрута _({conference})_ совпадает с параметром метода _($conference)_, а параметр метода связан с моделью _Conference (Conference $conference)_, Laravel воспринимает это как привязку модели маршрута.
+
+- При каждом посещении этого маршрута приложение будет считать, что все, что передается в URL вместо {conference}, является идентификатором, который следует использовать для поиска конференции, и затем этот результирующий экземпляр модели будет передан в метод закрытия или контроллера.
+
+Если есть два динамических сегмента в URL (organizers/{organizer}/conferences/{conference:slug), Laravel автоматически попытается ограничить запросы второй модели только теми, которые связаны с первой.
+
+То есть он проверит модель Organizer на наличие связи с конференциями и, если она существует, вернет только те конференции, которые связаны с организатором, найденным в первом сегменте.
+
+```php
+<?
+
+use App\Models\Conference;
+use App\Models\Organizer;
+
+Route::get(
+    'organizers/{organizer}/conferences/{conference:slug}',
+    function (Organizer $organizer, Conference $conference) {
+        return $conference;
+    });
+
+```
+
+#### Custom Route Model Binding (Явная привязка модели маршрута)
+
+добавляем в метод _boot()_, который находится в _App\Providers\RouteServiceProvider_:
+
+```php
+<?
+    public function boot()
+    {
+        // Perform the binding
+        Route::model('event', Conference::class);
+    }
+```
