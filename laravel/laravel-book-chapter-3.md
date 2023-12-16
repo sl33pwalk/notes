@@ -672,3 +672,273 @@ Route::get(
         Route::model('event', Conference::class);
     }
 ```
+
+теперь всегда, когда в руте есть параметр {event}, route resolver вернет сущность класса Conference с ID этого URL параметра.
+
+```php
+<?
+
+Route::get('events/{event}', function (Conference $event) {
+    return view('events.show')->with('event', $event);
+});
+
+```
+
+### Route Caching (Кеширование Маршрута)
+
+`php artisan route:clear`
+
+`php artisan route:cache` - routes/\* файлы будут кэшированы
+
+### Form Method Spoofing (Подмена Метода формы)
+
+```php
+<?
+<form action="/tasks/5" method="POST">
+    <input type="hidden" name="_method" value="DELETE">
+    <!-- or: -->
+    @method('DELETE')
+</form>
+```
+
+ну то есть с помощью @method можно указать HTTP-глагол
+
+### CSRF Protection
+
+```php
+<?
+
+<form action="/tasks/5" method="POST">
+    @csrf
+</form>
+
+```
+
+- По умолчанию все маршруты в Laravel, кроме маршрутов "только для чтения" (использующих GET, HEAD или OPTIONS), защищены от атак подделки межсайтовых запросов (CSRF), требуя передачи токена в виде входного поля с именем \_token вместе с каждым запросом.
+
+Этот токен генерируется в начале каждой сессии, и каждый маршрут, не предназначенный только для чтения, сравнивает переданный \_token с токеном сессии
+
+- Cross-site request forget (подделка межсайтовых запросов) - это когда один вебсайт притворяется другим.
+
+* Цель состоит в том, чтобы перехватить доступ пользователей к вашему сайту, отправляя формы со своего сайта на ваш сайт через браузер вошедшего пользователя.
+
+* Лучшим способом защиты от CSRF-атак является защита всех входящих маршрутов - POST, DELETE и т. д. - с помощью токена, что Laravel делает из коробки.
+
+### Redirects (Перенаправления)
+
+2 способа создать redirect
+
+1. вызвать как helper redirect()
+
+2. Вызвать как фасад
+
+Оба создают сущность Illuminate\Http\RedirectResponse, чето там делают и возвращают её.
+
+```php
+<?
+
+// Using the global helper to generate a redirect response
+Route::get('redirect-with-helper', function () {
+    return redirect()->to('login');
+});
+
+// Using the global helper shortcut
+Route::get('redirect-with-helper-shortcut', function () {
+    return redirect('login');
+});
+
+// Using the facade to generate a redirect response
+Route::get('redirect-with-facade', function () {
+    return Redirect::to('login');
+});
+
+// Using the Route::redirect shortcut
+Route::redirect('redirect-by-route', 'login');
+
+```
+
+- Если вы передаете параметры непосредственно в помощник, а не выстраиваете цепочку методов после него, то это сокращение метода перенаправления to() (?)
+
+##### redirect()->to()
+
+```php
+<?
+
+function to($to = null, $status = 302, $headers = [], $secure = null)
+
+```
+
+- $to - это валидный внутренний путь
+
+- $status - это статус HTTP (по умолчанию 302)
+
+- $headers позволяет определить, какие HTTP-заголовки отправлять вместе с перенаправлением
+
+- $secure позволяет переопределить выбор по умолчанию между http и https (который обычно устанавливается на основе текущего URL-адреса запроса).
+
+```php
+<?
+Route::get('redirect', function () {
+    return redirect()->to('home');
+
+    // Or same, using the shortcut:
+    return redirect('home');
+});
+```
+
+##### reditect()->route()
+
+```php
+<?
+Route::get('redirect', function () {
+    return redirect()->route('conferences.index');
+});
+```
+
+route() метод похож на to(), но вместо указывания определенного пути, он указывает на конкретное имя маршрута.
+
+из-за того, что некоторым рутам нужны параметры, route() имеет необязательный второй параметр для этого случая:
+
+```php
+<?
+function route($to = null, $parameters = [], $status = 302, $headers = [])
+```
+
+```php
+<?
+Route::get('redirect', function () {
+    return to_route('conferences.show', [
+        'conference' => 99,
+    ];
+});
+```
+
+- Можно использовать helper to_route() в качестве псевдонима для метода redirect()->route()
+
+##### redirect()->back()
+
+редиректит на прошлую страницу, на которой был пользователь до этой страницы
+
+##### redirect()->with()
+
+- with() отличается определяет не то, куда вы перенаправляете, а то, _какие данные вы передаете_ вместе с перенаправлением.
+
+```php
+<?
+Route::get('redirect-with-key-value', function () {
+    return redirect('dashboard')
+        ->with('error', true);
+});
+
+Route::get('redirect-with-array', function () {
+    return redirect('dashboard')
+        ->with(['error' => true, 'message' => 'Whoops!']);
+});
+```
+
+- Также можно использовать функцию **withInput()** для перенаправления с отображением введенной пользователем формы.
+
+эт когда хочеть отправить пользователя обратно к форме, от которой он пришел. Допустим, валидация выдала ошибки
+
+```php
+<?
+Route::get('form', function () {
+    return view('form');
+});
+
+Route::post('form', function () {
+    return redirect('form')
+        ->withInput()
+        ->with(['error' => true, 'message' => 'Whoops!']);
+});
+```
+
+- Самый простой способ получить данные, переданные с помощью функции withInput(), - использовать помощник old(), с помощью которого можно получить все старые данные (old()) или только значение для определенного ключа, как показано в следующем примере, причем второй параметр используется по умолчанию, если старого значения нет.
+
+Обычно это можно увидеть в представлениях, что позволяет использовать этот HTML как в представлении "создание", так и в представлении "редактирование" для этой формы:
+
+```php
+<?
+<input name="username" value="<?=
+    old('username', 'Default username instructions here');
+?>">
+```
+
+- Также существует метод для передачи ошибок вместе с ответом редиректа: withErrors().
+
+Вы можете передать ему любого "провайдера" ошибок, который может быть строкой ошибок, массивом ошибок или, чаще всего, экземпляром валидатора Illuminate.
+
+```php
+<?
+Route::post('form', function (Illuminate\Http\Request $request) {
+    $validator = Validator::make($request->all(), $this->validationRules);
+
+    if ($validator->fails()) {
+        return back()
+            ->withErrors($validator)
+            ->withInput();
+    }
+});
+```
+
+Функция withErrors() автоматически разделяет переменную $errors с представлениями страницы, на которую она перенаправляет, чтобы вы могли обработать ее по своему усмотрению.
+
+### Aborting the Request (Прерывание/Отмена Запроса)
+
+- Помимо возврата представлений и перенаправления (view and redirects), наиболее распространенным способом завершения маршрута является **прерывание**.
+
+Существует несколько глобально доступных методов (abort(), abort_if() и abort_unless()), которые опционально принимают в качестве параметров коды состояния HTTP, сообщение и массив заголовков
+
+```php
+<?
+Route::post('something-you-cant-do', function (Illuminate\Http\Request $request) {
+    abort(403, 'You cannot do that!');
+    abort_unless($request->has('magicToken'), 403);
+    abort_if($request->user()->isBanned, 403);
+});
+```
+
+### Custom Responses (Пользовательские Ответы)
+
+- response()->make()
+
+Если вы хотите создать HTTP-ответ вручную, просто передайте свои данные в первый параметр response()->make(): например, return response()->make(Hello, World!). И снова, второй параметр - это код состояния HTTP, а третий - ваши заголовки.
+
+- response()->json and ->jsonp()
+
+### Testing
+
+- В Laravel типично полагаться на тестирование приложений для проверки функциональности маршрутов
+
+Простой тест маршрута POST
+
+```php
+<?
+// tests/Feature/AssignmentTest.php
+public function test_post_creates_new_assignment()
+{
+    $this->post('/assignments', [
+        'title' => 'My great assignment',
+    ]);
+
+    $this->assertDatabaseHas('assignments', [
+        'title' => 'My great assignment',
+    ]);
+}
+```
+
+Простой тест маршрута GET
+
+```php
+<?
+// AssignmentTest.php
+public function test_list_page_shows_all_assignments()
+{
+    $assignment = Assignment::create([
+        'title' => 'My great assignment',
+    ]);
+
+    $this->get('/assignments')
+        ->assertSee('My great assignment');
+}
+```
