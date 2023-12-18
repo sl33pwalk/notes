@@ -135,6 +135,150 @@ $flight->number; // "FR 900"
 
 - all() и get() извлекают записи из бд. Но возвращают они не обычный php массив, а экземпляр _Illuminate\Database\Eloquent\Collection_
 
+### Retrieving Single Models / Aggregates
+
+```php
+<?
+use App\Models\Flight;
+
+// Retrieve a model by its primary key...
+$flight = Flight::find(1);
+
+// Retrieve the first model matching the query constraints...
+$flight = Flight::where('active', 1)->first();
+
+// Alternative to retrieving the first model matching the query constraints...
+$flight = Flight::firstWhere('active', 1);
+```
+
+```php
+<?
+$flight = Flight::findOrFail(1);
+
+$flight = Flight::where('legs', '>', 3)->firstOrFail();
+```
+
+```php
+<?
+use App\Models\Flight;
+
+// Retrieve flight by name or create it if it doesn't exist...
+$flight = Flight::firstOrCreate([
+    'name' => 'London to Paris'
+]);
+
+// Retrieve flight by name or create it with the name, delayed, and arrival_time attributes...
+$flight = Flight::firstOrCreate(
+    ['name' => 'London to Paris'],
+    ['delayed' => 1, 'arrival_time' => '11:30']
+);
+
+// Retrieve flight by name or instantiate a new Flight instance...
+$flight = Flight::firstOrNew([
+    'name' => 'London to Paris'
+]);
+
+// Retrieve flight by name or instantiate with the name, delayed, and arrival_time attributes...
+$flight = Flight::firstOrNew(
+    ['name' => 'Tokyo to Sydney'],
+    ['delayed' => 1, 'arrival_time' => '11:30']
+);
+```
+
+ну то есть при firstOrNew мы создаем новую сущность, которую нужно засейвить еще, а firstOrCreate сразу инсёртит в бд
+
+получаем агрегаты
+
+```php
+<?
+$count = Flight::where('active', 1)->count();
+
+$max = Flight::where('active', 1)->max('price');
+```
+
+## Inserting & Updating Models
+
+```php
+<?
+    public function store(Request $request): RedirectResponse
+    {
+        // Validate the request...
+
+        $flight = new Flight;
+
+        $flight->name = $request->name;
+
+        $flight->save();
+
+        return redirect('/flights');
+    }
+```
+
+после save() запись попадает в бд
+
+### Updates
+
+save() так же можно использовать для апдейта моделей, которые уже существуют в бд
+
+```php
+<?
+use App\Models\Flight;
+
+$flight = Flight::find(1);
+
+$flight->name = 'Paris to London';
+
+$flight->save();
+```
+
+- Метод update ожидает массив пар столбцов и значений, представляющих столбцы, которые должны быть обновлены.
+
+Метод update возвращает количество затронутых строк.
+
+```php
+<?
+Flight::where('active', 1)
+      ->where('destination', 'San Diego')
+      ->update(['delayed' => 1]);
+```
+
+- Уязвимость массового назначения возникает, когда пользователь передает неожиданное поле HTTP-запроса, и это поле изменяет столбец в вашей базе данных, чего вы не ожидали.Например, злоумышленник может отправить параметр is_admin через HTTP-запрос, который затем передается в метод create вашей модели, позволяя пользователю повысить свои полномочия до уровня администратора.
+
+- необходимо определить, какие атрибуты модели вы хотите сделать массово назначаемыми.Это можно сделать с помощью свойства $fillable модели.
+
+## Deleting Models
+
+```php
+<?
+use App\Models\Flight;
+
+$flight = Flight::find(1);
+
+$flight->delete();
+```
+
+- Вы можете вызвать метод truncate, чтобы удалить все связанные с моделью записи базы данных.
+
+- Операция truncate также сбросит все автоинкрементные идентификаторы в связанной с моделью таблице
+
+```php
+<?
+Flight::truncate();
+```
+
+```php
+<?
+$deleted = Flight::where('active', 0)->delete();
+```
+
+### Soft Deleting
+
+## Query Scopes
+
+## Comparing Models
+
+## Events
+
 # TODO
 
 - [ ] Chunking
@@ -142,3 +286,5 @@ $flight->number; // "FR 900"
 - [ ] Cursors
 
 - [ ] Advanced Subqueries
+
+- [ ] Pruning Models
